@@ -8,10 +8,6 @@ A modern, premium online bookstore application featuring a glassmorphism UI desi
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16.x-336791?logo=postgresql)
 ![AWS](https://img.shields.io/badge/AWS-EC2-FF9900?logo=amazonaws)
 
-## 🌟 Live Demo
-
-**Visit the application:** `http://13.234.226.189`
-
 ## ✨ Features
 
 ### 🎨 Frontend (React)
