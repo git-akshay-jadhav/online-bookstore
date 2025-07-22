@@ -3,6 +3,7 @@ import BookList from './components/BookList';
 import BookForm from './components/BookForm';
 import BookDetails from './components/BookDetails';
 import SearchFilter from './components/SearchFilter';
+import BookCarousel from './components/BookCarousel';
 import './App.css';
 
 function App() {
@@ -15,18 +16,38 @@ function App() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // Get featured books (latest or high stock)
+  const getFeaturedBooks = () => {
+    return books
+      .filter(book => book.stock > 5)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 10);
+  };
+
+  // Get books by category
+  const getBooksByCategory = (category) => {
+    return books.filter(book => book.category === category).slice(0, 8);
+  };
+
   // Fetch books from API
   const fetchBooks = async (search = '', category = '') => {
     try {
+      setLoading(true);
       let url = '/api/books?';
       if (search) url += `search=${encodeURIComponent(search)}&`;
       if (category) url += `category=${encodeURIComponent(category)}&`;
       
       const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       setBooks(data);
     } catch (error) {
       console.error('Error fetching books:', error);
+      alert('Error loading books. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -34,6 +55,9 @@ function App() {
   const fetchCategories = async () => {
     try {
       const response = await fetch('/api/categories');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       setCategories(data);
     } catch (error) {
@@ -51,9 +75,13 @@ function App() {
         if (response.ok) {
           fetchBooks(searchTerm, selectedCategory);
           setSelectedBook(null);
+          alert('Book deleted successfully!');
+        } else {
+          throw new Error('Failed to delete book');
         }
       } catch (error) {
         console.error('Error deleting book:', error);
+        alert('Error deleting book. Please try again.');
       }
     }
   };
@@ -72,27 +100,85 @@ function App() {
     fetchBooks(search, category);
   };
 
+  // Handle book selection
+  const handleSelectBook = (book) => {
+    setSelectedBook(book);
+  };
+
   useEffect(() => {
-    fetchBooks();
-    fetchCategories();
-    setLoading(false);
+    const initializeApp = async () => {
+      await Promise.all([
+        fetchBooks(),
+        fetchCategories()
+      ]);
+      setLoading(false);
+    };
+    
+    initializeApp();
   }, []);
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return (
+      <div className="loading">
+        <div className="loading-spinner"></div>
+        <p>Loading your premium bookstore...</p>
+      </div>
+    );
   }
 
   return (
     <div className="App">
       <header className="app-header">
-        <h1>📚 Online Bookstore</h1>
+        <div className="header-content">
+          <h1>📚 Premium Bookstore</h1>
+          <p className="header-subtitle">Discover your next favorite read</p>
+        </div>
         <button 
           className="add-book-btn"
           onClick={() => setIsFormOpen(true)}
         >
-          + Add New Book
+          <span>+</span> Add New Book
         </button>
       </header>
+
+      {/* Book Carousels */}
+      <div className="carousels-section">
+        {/* Featured Books Carousel */}
+        {getFeaturedBooks().length > 0 && (
+          <BookCarousel 
+            books={getFeaturedBooks()}
+            onSelectBook={handleSelectBook}
+            title="🌟 Featured Books"
+            subtitle="Discover our most popular and newest additions"
+          />
+        )}
+
+        {/* Category-based Carousels */}
+        {categories.slice(0, 4).map(category => {
+          const categoryBooks = getBooksByCategory(category);
+          if (categoryBooks.length > 0) {
+            const categoryEmoji = {
+              'Fiction': '📖',
+              'Science Fiction': '🚀',
+              'Fantasy': '🐲',
+              'Romance': '💝',
+              'Programming': '💻',
+              'Philosophy': '🤔'
+            };
+            
+            return (
+              <BookCarousel 
+                key={category}
+                books={categoryBooks}
+                onSelectBook={handleSelectBook}
+                title={`${categoryEmoji[category] || '📚'} ${category} Collection`}
+                subtitle={`Explore our ${category.toLowerCase()} selection`}
+              />
+            );
+          }
+          return null;
+        })}
+      </div>
 
       <SearchFilter 
         onSearch={handleSearch}
@@ -105,7 +191,7 @@ function App() {
         <div className="books-section">
           <BookList 
             books={books}
-            onSelectBook={setSelectedBook}
+            onSelectBook={handleSelectBook}
             onEditBook={(book) => {
               setEditingBook(book);
               setIsFormOpen(true);
